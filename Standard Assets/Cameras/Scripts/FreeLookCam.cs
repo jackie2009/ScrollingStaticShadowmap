@@ -69,7 +69,7 @@ namespace UnityStandardAssets.Cameras
 
         private void HandleRotationMovement()
         {
-			if(Time.timeScale < float.Epsilon)
+			if(Time.timeScale < float.Epsilon|| Input.GetKey(KeyCode.LeftShift))
 			return;
 
             // Read the user input
