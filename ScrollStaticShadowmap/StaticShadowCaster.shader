@@ -8,7 +8,7 @@
 	{
 		 
 		LOD 100
-
+cull off
 		Pass
 		{
 			CGPROGRAM
@@ -34,9 +34,9 @@
 				v2f o;
 				float4 wpos=mul(unity_ObjectToWorld,v.vertex);
 				float3 wnormal= UnityObjectToWorldNormal(v.normal);
-				float nl=dot(wnormal,normalize(_WorldSpaceCameraPos.xyz-wpos));
+				float nl=max(0,dot(wnormal,normalize(_WorldSpaceCameraPos.xyz-wpos)));
 		 float4 vpos = mul(UNITY_MATRIX_V,wpos-float4(_shadowmapNormalBias*0.15*wnormal,0));
-		 vpos.z-=_shadowmapBias+lerp(0.1,0,pow(nl,0.5));
+		 vpos.z-=_shadowmapBias+lerp(0.2,0,pow(nl,0.5));
 		 o.vertex= mul(UNITY_MATRIX_P,vpos);
 	      o.depth= o.vertex.zw;
 			return o;

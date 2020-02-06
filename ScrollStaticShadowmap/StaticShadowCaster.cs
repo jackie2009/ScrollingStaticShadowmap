@@ -3,7 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class StaticShadowCaster2 : MonoBehaviour
+namespace com.jackie2009.scrollStaticShadowmap
+{
+	
+
+
+public class StaticShadowCaster : MonoBehaviour
 {
  	public bool renderUpdateMode;
 	public Shader castShader;
@@ -16,8 +21,11 @@ public class StaticShadowCaster2 : MonoBehaviour
 	[Range(0,3)]
 	public float normalBias=0.4f;
  	// Use this for initialization
-	void Start () {
-		  cmr = GetComponent<Camera>();
+    private int currentRenderIndex=0;
+    private Matrix4x4[] lightProjecionMatrixs=new Matrix4x4[10];
+    private void Awake()
+    {
+	     cmr = GetComponent<Camera>();
 		print( SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Shadowmap));
 		print(SystemInfo.supports2DArrayTextures);
 		print((SystemInfo.copyTextureSupport & CopyTextureSupport.DifferentTypes) != 0);
@@ -26,39 +34,28 @@ public class StaticShadowCaster2 : MonoBehaviour
 		GraphicsSettings.SetCustomShader(BuiltinShaderType.ScreenSpaceShadows,screenSpaceShadowsShader);
 	}
 
-	private void OnGUI()
-	{
-		 
-		GUI.skin.button.fontSize = 36;
-		if (shadowmap == null)
-		{
-			if (GUI.Button(new Rect(Screen.width / 2 - 200, Screen.height / 2, 800, 40), "启用静态shadowmap观察drawcall和性能"))
-			{
 
-				castShadow();
-			 
-			}
-			
-		}
-		else
+
+	private void OnEnable()
+	{
+		castShadow();
+	}
+
+	private void OnDisable()
+	{
+		cmr.targetTexture = null;
+		shadowmap.Release();
+		shadowmap = null;
+		Shader.SetGlobalFloat("_shadowmapEnable", 0);
+		Shader.SetGlobalTexture("_shadowmap",null);
+		foreach (var renderer in FindObjectsOfType<Renderer>())
 		{
-			if (GUI.Button(new Rect(Screen.width / 2 - 200, Screen.height / 2, 800, 40), "启动普通shadowmap观察drawcall和性能"))
-			{
-				cmr.targetTexture = null;
-				shadowmap.Release();
-				shadowmap = null;
-				Shader.SetGlobalFloat("_shadowmapEnable", 0);
-				Shader.SetGlobalTexture("_shadowmap",null);
-				foreach (var renderer in FindObjectsOfType<Renderer>())
-				{
 					 
-					if(renderer.gameObject.CompareTag("staticShadowmap"))
-						renderer.shadowCastingMode = ShadowCastingMode.On;
-				}
-				 
-			}
+			if(renderer.gameObject.CompareTag("staticShadowmap"))
+				renderer.shadowCastingMode = ShadowCastingMode.On;
 		}
 	}
+
 	void castShadow()
 	{
 		/*
@@ -69,7 +66,7 @@ public class StaticShadowCaster2 : MonoBehaviour
 		shadowmap= new RenderTexture(4096, 4096, 16/*depth*/, RenderTextureFormat.Shadowmap, RenderTextureReadWrite.Linear);
 		shadowmap.useMipMap = false;
  		shadowmap.dimension = TextureDimension.Tex2DArray;
-		shadowmap.volumeDepth = 9;
+		shadowmap.volumeDepth = 10;
 		shadowmap.autoGenerateMips = false;
 		shadowmap.filterMode = FilterMode.Point;
 		shadowmap.Create();
@@ -118,8 +115,8 @@ public class StaticShadowCaster2 : MonoBehaviour
 	private void OnRenderImage(RenderTexture src, RenderTexture dest)
 	{
 		//Graphics.Blit(src,dest);
-		 
-		Graphics.CopyTexture(src,0,shadowmap,1);
+		if (shadowmap == null) return;
+		Graphics.CopyTexture(src,0,shadowmap,currentRenderIndex+1);
   
 	}
 
@@ -129,8 +126,26 @@ public class StaticShadowCaster2 : MonoBehaviour
 		Matrix4x4 worldToView = cmr.worldToCameraMatrix;
 		Matrix4x4 projection  = GL.GetGPUProjectionMatrix(cmr.projectionMatrix, false);
 		Matrix4x4 lightProjecionMatrix =  projection * worldToView;
-		Shader.SetGlobalMatrix ("_LightProjection", lightProjecionMatrix);
+		//Shader.SetGlobalMatrix ("_LightProjection", lightProjecionMatrix);
+		lightProjecionMatrixs[currentRenderIndex + 1] = lightProjecionMatrix;
+		Shader.SetGlobalMatrixArray("_LightProjections", lightProjecionMatrixs);
+		print(currentRenderIndex);
+		 
  	}
 
-	 
+
+	public void renderWithIndex(int index,Vector3 pos)
+	{
+		if (shadowmap == null)
+		{
+			return;
+		}
+
+		 
+		pos.y = 0;
+		transform.parent.position = pos;
+		currentRenderIndex = index;
+		renderShadow();
+	}
+}
 }

@@ -110,10 +110,10 @@ float4 _ShadowMapTexture_TexelSize;
   half2( 0.34495938, 0.29387760 )
 };
  //sampler2D _shadowmap;
- // #define UNITY_SAMPLE_SHADOW_extra(tex,coord) (UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy, 1)).r>coord.z?0:1 )
-  #define UNITY_SAMPLE_SHADOW_extra(tex,coord) ((UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[0]/4096, 1)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[1]/4096, 1)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[2]/4096, 1)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[3]/4096, 1)).r>coord.z?0:1 )*0.25) //  UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy, 1)).r>coord.z?1:0//UNITY_SAMPLE_SHADOW(tex,coord) // (tex2D(tex,coord.xy).r>coord.z?1:0)
+ 
+   #define UNITY_SAMPLE_SHADOW_extra(tex,coord,index) ((UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[0]/4096, index)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[1]/4096, index)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[2]/4096, index)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[3]/4096, index)).r>coord.z?0:1 )*0.25) //  UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy, index)).r>coord.z?1:0//UNITY_SAMPLE_SHADOW(tex,coord) // (tex2D(tex,coord.xy).r>coord.z?1:0)
  float4 _shadowmap_TexelSize;
-  float4x4 _LightProjection;
+  float4x4 _LightProjections[10];
   float _shadowmapEnable;
 
 
@@ -374,7 +374,7 @@ half sampleShadowmap_PCF5x5 (float4 coord, float2 receiverPlaneDepthBias)
 }
 
  
-half sampleShadowmap_PCF5x5_extra (float4 coord, float2 receiverPlaneDepthBias)
+half sampleShadowmap_PCF5x5_extra (float4 coord, float2 receiverPlaneDepthBias,int index)
 {
   float4 _shadowmap_TexelSize2= half4(1.0f/4096.0,1.0f/4096.0,4096.0,4096.0);
 
@@ -397,19 +397,19 @@ half sampleShadowmap_PCF5x5_extra (float4 coord, float2 receiverPlaneDepthBias)
 	half sum = 0.0f;
 
 	half3 accum = uw * vw.x;
-	sum += accum.x * UNITY_SAMPLE_SHADOW_extra ( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.x,v.x), coord.z, receiverPlaneDepthBias) );
-    sum += accum.y * UNITY_SAMPLE_SHADOW_extra ( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.y,v.x), coord.z, receiverPlaneDepthBias) );
-    sum += accum.z * UNITY_SAMPLE_SHADOW_extra ( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.z,v.x), coord.z, receiverPlaneDepthBias) );
+	sum += accum.x * UNITY_SAMPLE_SHADOW_extra ( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.x,v.x), coord.z, receiverPlaneDepthBias) ,index );
+    sum += accum.y * UNITY_SAMPLE_SHADOW_extra ( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.y,v.x), coord.z, receiverPlaneDepthBias) ,index );
+    sum += accum.z * UNITY_SAMPLE_SHADOW_extra ( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.z,v.x), coord.z, receiverPlaneDepthBias) ,index );
 
 	accum = uw * vw.y;
-    sum += accum.x *  UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.x,v.y), coord.z, receiverPlaneDepthBias) );
-    sum += accum.y *  UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.y,v.y), coord.z, receiverPlaneDepthBias) );
-    sum += accum.z *  UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.z,v.y), coord.z, receiverPlaneDepthBias) );
+    sum += accum.x *  UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.x,v.y), coord.z, receiverPlaneDepthBias) ,index );
+    sum += accum.y *  UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.y,v.y), coord.z, receiverPlaneDepthBias) ,index );
+    sum += accum.z *  UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.z,v.y), coord.z, receiverPlaneDepthBias) ,index );
 
 	accum = uw * vw.z;
-    sum += accum.x * UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.x,v.z), coord.z, receiverPlaneDepthBias) );
-    sum += accum.y * UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.y,v.z), coord.z, receiverPlaneDepthBias) );
-    sum += accum.z * UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.z,v.z), coord.z, receiverPlaneDepthBias) );
+    sum += accum.x * UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.x,v.z), coord.z, receiverPlaneDepthBias)  ,index);
+    sum += accum.y * UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.y,v.z), coord.z, receiverPlaneDepthBias)  ,index);
+    sum += accum.z * UNITY_SAMPLE_SHADOW_extra( _shadowmap, combineShadowcoordComponents( base_uv, float2(u.z,v.z), coord.z, receiverPlaneDepthBias)  ,index);
 
     shadow = sum / 144.0f;
 
@@ -494,16 +494,32 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
 	half shadow =  sampleShadowmap_PCF5x5(coord, receiverPlaneDepthBias);
 	
 	 if( _shadowmapEnable>0.5){
+	  
+      // 计算每个点应该采样哪张图 哪个相机projection 可以用投影到与相机垂直到平面来 计算 性能更好 这里先直观的采用离哪个ndc中心更近判断
+     int  renderIndex =0;// ((int)offsetPos.y + 1) * 3 + ((int)offsetPos.x + 1)+1;
+     half mindis=100000;
+     for(int i=1;i<10;i++){
+       half4 tempUV=mul(_LightProjections[i] , wpos);
+       tempUV.xyz/=tempUV.w;
+       
+       half tempDis=  max(abs(tempUV.x),abs(tempUV.y));
+       if(tempDis<1&&tempDis<mindis){
+       mindis=tempDis;
+       renderIndex=i;
+       }
+     }
+	
+	
 	//计算NDC坐标
-    fixed4 ndcpos = mul(_LightProjection , wpos);
+    fixed4 ndcpos = mul(_LightProjections[renderIndex] , wpos);
     ndcpos.xyz = ndcpos.xyz / ndcpos.w ;
     //从[-1,1]转换到[0,1]
     float4 uvpos =  ndcpos * 0.5 + 0.5 ;
    //  uvpos.z= (uvpos.z)-0.0005;
      
     uvpos.w=1;
-    
-   shadow *=  sampleShadowmap_PCF5x5_extra(uvpos, receiverPlaneDepthBias);
+    if(renderIndex>0)
+   shadow *=  sampleShadowmap_PCF5x5_extra(uvpos, receiverPlaneDepthBias,renderIndex);
   // shadow =   UNITY_SAMPLE_TEX2DARRAY(_shadowmap, float3(uvpos.xy, 1)).r>uvpos.z?0:1;
    }
 
