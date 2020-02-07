@@ -99,10 +99,22 @@ float4 unity_ShadowCascadeScales;
 UNITY_DECLARE_SHADOWMAP(_ShadowMapTexture);
 float4 _ShadowMapTexture_TexelSize;
  
- //#define UNITY_SAMPLE_TEX2DARRAY2(tex,coord) tex.SampleLevel (sampler##tex,coord)//tex.Sample (sampler##tex,(coord).xy,0)
- //#define UNITY_DECLARE_TEX2DARRAY2(tex) Texture2DArray tex;SamplerComparisonState sampler##tex
- //UNITY_DECLARE_SHADOWMAP(_shadowmap);
+ 
+  float4 _shadowmap_TexelSize;
+ 
+  float _shadowmapEnable;
+ #define SHADOWMAP_ATLAS 1
+ #if SHADOWMAP_ATLAS
+   int _shadowmapLod0Index;
+ 
+ 
+	
+  UNITY_DECLARE_SHADOWMAP(_shadowmap);
+     #define UNITY_SAMPLE_SHADOW_extra(tex,coord,index)  UNITY_SAMPLE_SHADOW(tex,coord)  //  UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy, index)).r>coord.z?1:0//UNITY_SAMPLE_SHADOW(tex,coord) // (tex2D(tex,coord.xy).r>coord.z?1:0)
+ float4x4 _LightProjections[9];
+ #else
  UNITY_DECLARE_TEX2DARRAY( _shadowmap);
+
  static half2 poissonDisk[4] = {
   half2( -0.94201624, -0.39906216 ),
   half2( 0.94558609, -0.76890725 ),
@@ -112,9 +124,10 @@ float4 _ShadowMapTexture_TexelSize;
  //sampler2D _shadowmap;
  
    #define UNITY_SAMPLE_SHADOW_extra(tex,coord,index) ((UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[0]/4096, index)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[1]/4096, index)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[2]/4096, index)).r>coord.z?0:1 )*0.25+(UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy+poissonDisk[3]/4096, index)).r>coord.z?0:1 )*0.25) //  UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy, index)).r>coord.z?1:0//UNITY_SAMPLE_SHADOW(tex,coord) // (tex2D(tex,coord.xy).r>coord.z?1:0)
- float4 _shadowmap_TexelSize;
-  float4x4 _LightProjections[10];
-  float _shadowmapEnable;
+ float4x4 _LightProjections[10];
+#endif
+
+
 
 
 //
@@ -376,8 +389,34 @@ half sampleShadowmap_PCF5x5 (float4 coord, float2 receiverPlaneDepthBias)
  
 half sampleShadowmap_PCF5x5_extra (float4 coord, float2 receiverPlaneDepthBias,int index)
 {
-  float4 _shadowmap_TexelSize2= half4(1.0f/4096.0,1.0f/4096.0,4096.0,4096.0);
+  float4 _shadowmap_TexelSize2=_shadowmap_TexelSize;// half4(1.0f/4096.0,1.0f/4096.0,4096.0,4096.0);
+ #if SHADOWMAP_ATLAS
+    
+  	//coord.x/=  sign(index)*2+2; 
+ 
+  	//coord.y/=  sign(index)*2+2;
 
+ coord.xy*= lerp(0.8,0.2, sign(index)); 
+  	if(index>0){
+  	coord.z+=0.01;
+  			// coord.x +=  0.5 +  ((index+1)%2) *0.25;
+  			//coord.y +=((index-1)/2)*0.25 ;
+  			 if (index < 5)
+			{
+				 coord.x += 0.8;
+				coord.y += (index-1) / 5.0;
+			}
+			else
+			{
+			 coord.x += (index-5)/ 5.0;
+				coord.y += 0.8;
+				 
+				
+			}
+  			}
+  
+  
+#endif
 #if defined(SHADOWS_NATIVE)
 
 	const float2 offset = float2(0.5,0.5);
@@ -498,7 +537,12 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
       // 计算每个点应该采样哪张图 哪个相机projection 可以用投影到与相机垂直到平面来 计算 性能更好 这里先直观的采用离哪个ndc中心更近判断
      int  renderIndex =0;// ((int)offsetPos.y + 1) * 3 + ((int)offsetPos.x + 1)+1;
      half mindis=100000;
-     for(int i=1;i<10;i++){
+      static int indexOffset=1;
+      #if SHADOWMAP_ATLAS
+      indexOffset=0;
+      #endif
+     
+     for(int i=indexOffset;i<9+indexOffset;i++){
        half4 tempUV=mul(_LightProjections[i] , wpos);
        tempUV.xyz/=tempUV.w;
        
@@ -518,7 +562,12 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
    //  uvpos.z= (uvpos.z)-0.0005;
      
     uvpos.w=1;
-    if(renderIndex>0)
+     #if SHADOWMAP_ATLAS
+     
+       #else
+       if(renderIndex>0)
+      #endif
+    
    shadow *=  sampleShadowmap_PCF5x5_extra(uvpos, receiverPlaneDepthBias,renderIndex);
   // shadow =   UNITY_SAMPLE_TEX2DARRAY(_shadowmap, float3(uvpos.xy, 1)).r>uvpos.z?0:1;
    }

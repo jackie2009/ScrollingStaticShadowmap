@@ -11,12 +11,13 @@ namespace com.jackie2009.scrollStaticShadowmap
 
         private int currentX ;
         private int currentZ ;
-        private int lod;
+        private int lod=-1;
         private int index;
         private Transform testItem;
         private float cellSize=10;
         static private int[] cellOffsetList3_3 = {0, -1, 1};
-
+        private Color color;
+        static private int currentLod0Index=4;
         public ShadowmapCell(int offsetX, int offsetZ, Transform testItem,float cellSize)
         {
             resetCurrentPos();
@@ -25,6 +26,7 @@ namespace com.jackie2009.scrollStaticShadowmap
             this.offsetZ = offsetZ;
             index = (offsetZ + 1) * 3 + (offsetX + 1);
             this.testItem = testItem;
+            color = testItem.GetComponent<Renderer>().sharedMaterial.color;
         }
 
         int getShouldPos(int center, int offset)
@@ -47,18 +49,45 @@ namespace com.jackie2009.scrollStaticShadowmap
             int centerZ = (int) Mathf.Floor(centerPos.z + 0.5f);
             int shouldX = getShouldPos(centerX, offsetX);
             int shouldZ = getShouldPos(centerZ, offsetZ);
+#if SHADOWMAP_ATLAS
+            bool lodChange = false;
+            int newlod = centerX == shouldX && centerZ == shouldZ ? 0 : 1;
+            if (newlod != lod)
+            {
+                lod = newlod;
+                lodChange = true;
+            }
+         
+            ////if (lod == 0 || (shouldX == centerX && shouldZ == centerZ)) lodChange = true;
+            if (lodChange|| shouldX != currentX || shouldZ != currentZ)
+            {
+#else
             if (shouldX != currentX || shouldZ != currentZ)
             {
-
+ #endif
                 currentX = shouldX;
                 currentZ = shouldZ;
-
+            
                 var pos = testItem.position;
                 pos.x = currentX * cellSize;
                 pos.z = currentZ * cellSize;
                 testItem.position = pos;
-                shadowCaster.renderWithIndex(index, pos);
-               // Debug.Log("updateDraw");
+
+#if SHADOWMAP_ATLAS
+
+
+                if (lod == 0)
+                {
+                    currentLod0Index = index;
+                    Shader.SetGlobalInt("_shadowmapLod0Index", currentLod0Index);
+                }
+                testItem.GetComponent<Renderer>().sharedMaterial.color=lod==0?Color.blue :  color ;
+                shadowCaster.renderWithIndex(lod==0?0:(index<currentLod0Index?index+1: index), pos);
+                #else
+                 shadowCaster.renderWithIndex( index, pos);
+                #endif
+               
+                Debug.Log("currentLod0Index"+currentLod0Index);
             }
         }
 

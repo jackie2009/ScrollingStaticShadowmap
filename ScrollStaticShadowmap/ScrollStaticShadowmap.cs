@@ -26,8 +26,8 @@ namespace com.jackie2009.scrollStaticShadowmap
 				testItem.transform.localScale = new Vector3(cellSize, 0.01f, cellSize);
 
 				testItem.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
-				testItem.GetComponent<Renderer>().material.color = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f),
-					Random.Range(0f, 1f));
+				testItem.GetComponent<Renderer>().material.color = new Color((float)r/3,(float)c/3 ,
+					0);
 				testItem.transform.position = new Vector3(0, 1.4f, 0);
 				cells[i] = new ShadowmapCell(c - 1, r - 1, testItem.transform,cellSize);
 			}
