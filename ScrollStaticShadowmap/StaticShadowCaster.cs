@@ -66,24 +66,10 @@ public class StaticShadowCaster : MonoBehaviour
 		*/
 		if (shadowResolution == LightShadowResolution.FromQualitySettings)
 			shadowResolution = (LightShadowResolution)QualitySettings.shadowResolution;
-		int rtSize = (1 << (int)shadowResolution) * 512;
-		#if SHADOWMAP_ATLAS
-		rtSize *= 2;
-			//shadowmap=RenderTexture.GetTemporary(4096,4096,16, RenderTextureFormat.Shadowmap,RenderTextureReadWrite.Default,1);//  new RenderTexture(4096, 4096, 16/*depth*/, RenderTextureFormat.Shadowmap, RenderTextureReadWrite.Linear);
-			shadowmap= new RenderTexture(rtSize, rtSize, 16/*depth*/, RenderTextureFormat.Shadowmap, RenderTextureReadWrite.Linear);
-			
-			
-			
-			 
-			
-		//shadowmap.dimension = TextureDimension.Tex2D;
+		int rtSize = (1 << (int)shadowResolution) * 1024;
  
-		#else
-		shadowmap= new RenderTexture(rtSize, rtSize, 16/*depth*/, RenderTextureFormat.Shadowmap, RenderTextureReadWrite.Linear);
-	 
- 		shadowmap.dimension = TextureDimension.Tex2DArray;
-		shadowmap.volumeDepth = 10;
-#endif
+ 			shadowmap= new RenderTexture(rtSize, rtSize, 16/*depth*/, RenderTextureFormat.Shadowmap, RenderTextureReadWrite.Linear);
+ 
 	 	shadowmap.useMipMap = false;
 	 shadowmap.autoGenerateMips = false;
 	 	shadowmap.filterMode = FilterMode.Point;
@@ -135,14 +121,13 @@ public class StaticShadowCaster : MonoBehaviour
 	{
 		//;
 		if (shadowmap == null) return;
-#if SHADOWMAP_ATLAS
+ 
 		 
 		int destX = 0;
 		int destY = 0;
 		if (currentRenderIndex > 0)
 		{
-			//destX = shadowmap.width / 2 + shadowmap.width*((currentRenderIndex+1)%2) / 4;
-			//destY = shadowmap.height/4 * ((currentRenderIndex-1)/2);
+			 
 			if (currentRenderIndex < 5)
 			{
 				destX = shadowmap.width * 4 / 5;
@@ -155,14 +140,10 @@ public class StaticShadowCaster : MonoBehaviour
 				
 			}
 		}
- print(currentRenderIndex+","+src.width+","+src.height+","+destX+","+destY);
+ 
 
 		 Graphics.CopyTexture(src,0,0,0,0,src.width,src.height,shadowmap,0,0,destX,destY);
-	 
-
-#else
-		Graphics.CopyTexture(src,0,shadowmap,currentRenderIndex+1);
-#endif
+ 
 	}
 
 	private void UpdateMatrix()
@@ -172,12 +153,9 @@ public class StaticShadowCaster : MonoBehaviour
 		Matrix4x4 projection  = GL.GetGPUProjectionMatrix(cmr.projectionMatrix, false);
 		Matrix4x4 lightProjecionMatrix =  projection * worldToView;
 		//Shader.SetGlobalMatrix ("_LightProjection", lightProjecionMatrix);
-#if SHADOWMAP_ATLAS
+ 
 		lightProjecionMatrixs[currentRenderIndex] = lightProjecionMatrix;		
-#else
-
-		lightProjecionMatrixs[currentRenderIndex + 1] = lightProjecionMatrix;
-#endif
+ 
 		Shader.SetGlobalMatrixArray("_LightProjections", lightProjecionMatrixs);
 		print(currentRenderIndex);
 		 
@@ -195,7 +173,7 @@ public class StaticShadowCaster : MonoBehaviour
 		pos.y = 0;
 		transform.parent.position = pos;
 		currentRenderIndex = index;
-#if SHADOWMAP_ATLAS
+ 
 		int rtSize = shadowmap.width*4/5;
 		if (index != 0) rtSize = shadowmap.width/5;
 		if (cmr.targetTexture != null)
@@ -205,14 +183,14 @@ public class StaticShadowCaster : MonoBehaviour
 		}
 
 		var tempRT =cmr.targetTexture = RenderTexture.GetTemporary(rtSize, rtSize, 16, shadowmap.format);		
-#endif
+ 
 		renderShadow();
 		
-#if SHADOWMAP_ATLAS
+ 
 		 
 		  cmr.targetTexture =null;
 		  RenderTexture.ReleaseTemporary(tempRT);
-#endif
+ 
 		
 	}
 }
