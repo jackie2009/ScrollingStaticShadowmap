@@ -11,8 +11,8 @@ namespace com.jackie2009.scrollStaticShadowmap
 
 public class StaticShadowCaster : MonoBehaviour
 {
- 	public bool renderUpdateMode;
-	public Shader castShader;
+ 	public Shader castShader;
+	public Shader mergeDepthShader;
 	public Shader screenSpaceShadowsShader;
 	public LightShadowResolution shadowResolution;
 	private Camera cmr;
@@ -24,9 +24,11 @@ public class StaticShadowCaster : MonoBehaviour
  	// Use this for initialization
     private int currentRenderIndex=0;
     private Matrix4x4[] lightProjecionMatrixs=new Matrix4x4[10];
+    private Material mergeMat;
     private void Awake()
     {
 	     cmr = GetComponent<Camera>();
+	     mergeMat=new Material(mergeDepthShader);
 		print( SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Shadowmap));
 		print(SystemInfo.supports2DArrayTextures);
 		print((SystemInfo.copyTextureSupport & CopyTextureSupport.DifferentTypes) != 0);
@@ -77,7 +79,7 @@ public class StaticShadowCaster : MonoBehaviour
 		 shadowmap.Create();
 		
 		cmr.enabled = false;
-		 cmr.targetTexture = shadowmap;
+		 //cmr.targetTexture = shadowmap;
 		 
         Shader.SetGlobalTexture("_shadowmap",shadowmap);
         Shader.SetGlobalFloat("_shadowmapEnable", 1);
@@ -107,43 +109,18 @@ public class StaticShadowCaster : MonoBehaviour
 		Shader.SetGlobalTexture("_shadowmap",null);
 	}
 
-	private void Update()
-	{
-		if (renderUpdateMode&& shadowmap!=null)
-		{
-			renderShadow();
-		 
-		}
-		
-	}
+ 
 
 	private void OnRenderImage(RenderTexture src, RenderTexture dest)
 	{
 		//;
 		if (shadowmap == null) return;
  
+		 mergeMat.SetTexture("_rtTex",src);
+		 mergeMat.SetInt("_rtID", currentRenderIndex);// new Vector4(destX,destY,(float)cmr.targetTexture.width/shadowmap.width,0));
+		 Graphics.Blit(null,shadowmap,mergeMat);
+		
 		 
-		int destX = 0;
-		int destY = 0;
-		if (currentRenderIndex > 0)
-		{
-			 
-			if (currentRenderIndex < 5)
-			{
-				destX = shadowmap.width * 4 / 5;
-				destY = shadowmap.height*(currentRenderIndex-1) / 5;
-			}
-			else
-			{
-				destX = shadowmap.width *(currentRenderIndex-5)/ 5;
-				destY = shadowmap.height * 4 / 5;
-				
-			}
-		}
- 
-
-		 Graphics.CopyTexture(src,0,0,0,0,src.width,src.height,shadowmap,0,0,destX,destY);
- 
 	}
 
 	private void UpdateMatrix()

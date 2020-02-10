@@ -30,6 +30,7 @@ namespace com.jackie2009.scrollStaticShadowmap
 					0);
 				testItem.transform.position = new Vector3(0, 1.4f, 0);
 				cells[i] = new ShadowmapCell(c - 1, r - 1, testItem.transform,cellSize);
+				testItem.GetComponent<Renderer>().enabled = false;
 			}
 
 			GetComponent<Camera>().orthographicSize = cellSize / 2 * Mathf.Sqrt(2);
