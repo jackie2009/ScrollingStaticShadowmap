@@ -72,7 +72,7 @@ public class StaticShadowCaster : MonoBehaviour
  
 	 	shadowmap.useMipMap = false;
 	 shadowmap.autoGenerateMips = false;
-	 	shadowmap.filterMode = FilterMode.Point;
+	 	shadowmap.filterMode = FilterMode.Bilinear;
 		 shadowmap.name = "StaticShadowmap";
 		 shadowmap.Create();
 		
@@ -117,16 +117,16 @@ public class StaticShadowCaster : MonoBehaviour
 		
 	}
 
-	private void OnRenderImage(RenderTexture src, RenderTexture dest)
+	private void UpdateCamerarect()
 	{
-		//;
-		if (shadowmap == null) return;
- 
+		int rtSize = shadowmap.width*4/5;
+	 
 		 
 		int destX = 0;
 		int destY = 0;
 		if (currentRenderIndex > 0)
 		{
+			rtSize = shadowmap.width / 5;
 			 
 			if (currentRenderIndex < 5)
 			{
@@ -141,8 +141,8 @@ public class StaticShadowCaster : MonoBehaviour
 			}
 		}
  
-
-		 Graphics.CopyTexture(src,0,0,0,0,src.width,src.height,shadowmap,0,0,destX,destY);
+      cmr.pixelRect=new Rect(destX,destY,rtSize,rtSize);
+ 
  
 	}
 
@@ -174,24 +174,19 @@ public class StaticShadowCaster : MonoBehaviour
 		transform.parent.position = pos;
 		currentRenderIndex = index;
  
-		int rtSize = shadowmap.width*4/5;
-		if (index != 0) rtSize = shadowmap.width/5;
-		if (cmr.targetTexture != null)
-		{
-		//	var tempRT = cmr.targetTexture;
-			//RenderTexture.ReleaseTemporary(tempRT);
-		}
+	 
 
-		var tempRT =cmr.targetTexture = RenderTexture.GetTemporary(rtSize, rtSize, 16, shadowmap.format);		
- 
+		 	
+  UpdateCamerarect();
 		renderShadow();
 		
  
 		 
-		  cmr.targetTexture =null;
-		  RenderTexture.ReleaseTemporary(tempRT);
+		   
  
 		
 	}
+
+	 
 }
 }
