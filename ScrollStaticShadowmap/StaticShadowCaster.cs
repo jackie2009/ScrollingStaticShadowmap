@@ -74,7 +74,7 @@ public class StaticShadowCaster : MonoBehaviour
  
 	 	shadowmap.useMipMap = false;
 	 shadowmap.autoGenerateMips = false;
-	 	shadowmap.filterMode = FilterMode.Point;
+	 	shadowmap.filterMode = FilterMode.Bilinear;
 		 shadowmap.name = "StaticShadowmap";
 		 shadowmap.Create();
 		
