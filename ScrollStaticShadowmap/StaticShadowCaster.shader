@@ -12,6 +12,8 @@ cull off
 		Pass
 		{
 			CGPROGRAM
+ 
+#pragma exclude_renderers d3d9 gles
 			#pragma vertex vert
 			#pragma fragment frag
 			#include "UnityCG.cginc"

@@ -10,7 +10,8 @@ CGINCLUDE
  
 #include "UnityCG.cginc"
 #include "UnityShadowLibrary.cginc"
-
+ 
+#pragma exclude_renderers d3d9 gles
 // Configuration
 
 
@@ -110,7 +111,9 @@ float4 _ShadowMapTexture_TexelSize;
 	
   UNITY_DECLARE_SHADOWMAP(_shadowmap);
      #define UNITY_SAMPLE_SHADOW_extra(tex,coord,index)  UNITY_SAMPLE_SHADOW(tex,coord)  //  UNITY_SAMPLE_TEX2DARRAY(tex, float3(coord.xy, index)).r>coord.z?1:0//UNITY_SAMPLE_SHADOW(tex,coord) // (tex2D(tex,coord.xy).r>coord.z?1:0)
- float4x4 _LightProjections[9];
+#define _LightProjectionsRow 7
+#define _LightProjectionsCount (_LightProjectionsRow*_LightProjectionsRow)
+  float4x4 _LightProjections[_LightProjectionsCount];
  
 
 
@@ -375,27 +378,16 @@ half sampleShadowmap_PCF5x5 (float4 coord, float2 receiverPlaneDepthBias)
  
 half sampleShadowmap_PCF5x5_extra (float4 coord, float2 receiverPlaneDepthBias,int index)
 {
+ 
   float4 _shadowmap_TexelSize2=_shadowmap_TexelSize;// half4(1.0f/4096.0,1.0f/4096.0,4096.0,4096.0);
  
-
- coord.xy*= lerp(0.8,0.2, sign(index)); 
-  	if(index>0){
-  	coord.z+=0.01;
-  			// coord.x +=  0.5 +  ((index+1)%2) *0.25;
-  			//coord.y +=((index-1)/2)*0.25 ;
-  			 if (index < 5)
-			{
-				 coord.x += 0.8;
-				coord.y += (index-1) / 5.0;
-			}
-			else
-			{
-			 coord.x += (index-5)/ 5.0;
-				coord.y += 0.8;
-				 
-				
-			}
-  			}
+  int rowcount = _LightProjectionsRow;
+  coord.xy /= rowcount;
+   
+  //	coord.z+=0.05;
+  			 coord.x +=   ((index)% rowcount) / (float)rowcount;
+  			 coord.y +=   ((index)/ rowcount) / (float)rowcount;
+  	 
   
   
  
@@ -515,23 +507,39 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
 	half shadow =  sampleShadowmap_PCF5x5(coord, receiverPlaneDepthBias);
 	
 	 if( _shadowmapEnable>0.5){
-	  
+	   int renderOffset=(int)(_LightProjectionsRow/2);
+	 float2 offset= floor(wpos.xz/30)+renderOffset;
+	 float2 center= floor(_WorldSpaceCameraPos.xz/30)+renderOffset;
+	  offset-= center;
+	   
+	
       // 计算每个点应该采样哪张图 哪个相机projection 可以用投影到与相机垂直到平面来 计算 性能更好 这里先直观的采用离哪个ndc中心更近判断
-     int  renderIndex =0;// ((int)offsetPos.y + 1) * 3 + ((int)offsetPos.x + 1)+1;
-     half mindis=100000;
-      
-  
+     int  renderIndex =0;// ((int)( offset)+renderOffset) * _LightProjectionsRow + ((int)(offset ) +renderOffset) ;
+      //计算世界坐标下 固定图集位置 ，不应该完全根据相对相机位置来计算 否则会覆盖其他正在使用的像素 这句含义只有上帝和我清楚
+            int renderIndexX = offset.x;
+            int renderIndexZ = offset.y;
+            int centerX=center.x;
+            int centerZ=center.y;
+            renderIndexX = (renderIndexX + (centerX%_LightProjectionsRow)+_LightProjectionsRow) % _LightProjectionsRow;
+            renderIndexZ = (renderIndexZ + (centerZ%_LightProjectionsRow)+_LightProjectionsRow) % _LightProjectionsRow;
+            
+            renderIndex = renderIndexZ * _LightProjectionsRow + renderIndexX;
      
-     for(int i=0;i<9;i++){
-       half4 tempUV=mul(_LightProjections[i] , wpos);
-       tempUV.xyz/=tempUV.w;
-       
-       half tempDis=  max(abs(tempUV.x),abs(tempUV.y));
-       if(tempDis<1&&tempDis<mindis){
-       mindis=tempDis;
-       renderIndex=i;
-       }
-     }
+     //half mindis=100000;
+    // renderIndex=12;
+      if(renderIndex>=0&&renderIndex<_LightProjectionsCount){
+  //renderIndex=0;
+     
+     //for(int i=0;i< _LightProjectionsCount;i++){
+     //  half4 tempUV=mul(_LightProjections[i] , wpos);
+     //  tempUV.xyz/=tempUV.w;
+     //  
+     //  half tempDis=  max(abs(tempUV.x),abs(tempUV.y));
+     //  if(tempDis<1&&tempDis<mindis){
+     //  mindis=tempDis;
+     //  renderIndex=i;
+     //  }
+     //}
 	
 	
 	//计算NDC坐标
@@ -544,6 +552,7 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
     uvpos.w=1;
    
    shadow *=  sampleShadowmap_PCF5x5_extra(uvpos, receiverPlaneDepthBias,renderIndex);
+   }
     }
 
 	// Blend between shadow cascades if enabled

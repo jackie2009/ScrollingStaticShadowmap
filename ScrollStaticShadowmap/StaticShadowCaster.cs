@@ -11,7 +11,7 @@ namespace com.jackie2009.scrollStaticShadowmap
 
 public class StaticShadowCaster : MonoBehaviour
 {
- 	public bool renderUpdateMode;
+ 	 
 	public Shader castShader;
 	public Shader screenSpaceShadowsShader;
 	public LightShadowResolution shadowResolution;
@@ -23,7 +23,9 @@ public class StaticShadowCaster : MonoBehaviour
 	public float normalBias=0.4f;
  	// Use this for initialization
     private int currentRenderIndex=0;
-    private Matrix4x4[] lightProjecionMatrixs=new Matrix4x4[10];
+        [HideInInspector]
+        public int cellCountSqrt = 8;
+        private Matrix4x4[] lightProjecionMatrixs;
     private void Awake()
     {
 	     cmr = GetComponent<Camera>();
@@ -88,8 +90,7 @@ public class StaticShadowCaster : MonoBehaviour
 			  renderer.shadowCastingMode = ShadowCastingMode.Off;
 		 }
 
-
-		 renderShadow();
+ 
 	}
 
 	private void renderShadow()
@@ -107,39 +108,20 @@ public class StaticShadowCaster : MonoBehaviour
 		Shader.SetGlobalTexture("_shadowmap",null);
 	}
 
-	private void Update()
-	{
-		if (renderUpdateMode&& shadowmap!=null)
-		{
-			renderShadow();
-		 
-		}
-		
-	}
+ 
 
 	private void UpdateCamerarect()
 	{
-		int rtSize = shadowmap.width*4/5;
+		int rtSize = shadowmap.width/cellCountSqrt;
 	 
 		 
-		int destX = 0;
-		int destY = 0;
-		if (currentRenderIndex > 0)
-		{
-			rtSize = shadowmap.width / 5;
-			 
-			if (currentRenderIndex < 5)
-			{
-				destX = shadowmap.width * 4 / 5;
-				destY = shadowmap.height*(currentRenderIndex-1) / 5;
-			}
-			else
-			{
-				destX = shadowmap.width *(currentRenderIndex-5)/ 5;
-				destY = shadowmap.height * 4 / 5;
-				
-			}
-		}
+		int destX = currentRenderIndex  % cellCountSqrt;
+		int destY = currentRenderIndex / cellCountSqrt;
+	  
+		 
+				destX  *= rtSize;
+				destY *= rtSize;
+	 
  
       cmr.pixelRect=new Rect(destX,destY,rtSize,rtSize);
  
@@ -153,11 +135,11 @@ public class StaticShadowCaster : MonoBehaviour
 		Matrix4x4 projection  = GL.GetGPUProjectionMatrix(cmr.projectionMatrix, false);
 		Matrix4x4 lightProjecionMatrix =  projection * worldToView;
 		//Shader.SetGlobalMatrix ("_LightProjection", lightProjecionMatrix);
- 
+  print("currentRenderIndex:"+currentRenderIndex);
 		lightProjecionMatrixs[currentRenderIndex] = lightProjecionMatrix;		
  
 		Shader.SetGlobalMatrixArray("_LightProjections", lightProjecionMatrixs);
-		print(currentRenderIndex);
+	 
 		 
  	}
 
@@ -168,10 +150,11 @@ public class StaticShadowCaster : MonoBehaviour
 		{
 			return;
 		}
-
-		 
+            if (lightProjecionMatrixs == null || lightProjecionMatrixs.Length != cellCountSqrt * cellCountSqrt)// = new Matrix4x4[10];)
+            { lightProjecionMatrixs = new Matrix4x4[cellCountSqrt * cellCountSqrt]; };
 		pos.y = 0;
 		transform.parent.position = pos;
+		
 		currentRenderIndex = index;
  
 	 
