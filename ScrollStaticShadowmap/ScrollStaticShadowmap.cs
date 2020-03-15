@@ -14,6 +14,7 @@ namespace com.jackie2009.scrollStaticShadowmap
 		private StaticShadowCaster _shadowCaster;
         private GameObject testItem;
           public bool showdebugRect = true;
+          public float avgHeight =0;
 
           private HashSet<int> capturedSet;//(z+5000)*10000+x+5000
 
@@ -35,7 +36,7 @@ namespace com.jackie2009.scrollStaticShadowmap
             testItem.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
             testItem.GetComponent<Renderer>().material.color = Color.red;
             testItem.GetComponent<Renderer>().enabled = showdebugRect;
-            testItem.transform.position = new Vector3(0, 1.4f, 0);
+            testItem.transform.position = new Vector3(0, avgHeight, 0);
 
 
 
@@ -46,6 +47,7 @@ namespace com.jackie2009.scrollStaticShadowmap
             Vector4 StaticShadowLightDir = transform.forward;
             StaticShadowLightDir.w = cellSize;
              Shader.SetGlobalVector("StaticShadowLightDir", StaticShadowLightDir);
+             Shader.SetGlobalFloat("StaticShadowAvgHeight", avgHeight);
              // _shadowCaster.enabled = true;
               capturedSet=new HashSet<int>();
 		}

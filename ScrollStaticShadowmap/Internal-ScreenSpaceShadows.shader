@@ -115,7 +115,7 @@ float4 _ShadowMapTexture_TexelSize;
 #define _LightProjectionsCount (_LightProjectionsRow*_LightProjectionsRow)
   float4x4 _LightProjections[_LightProjectionsCount];
   float4 StaticShadowLightDir;
-
+float StaticShadowAvgHeight;
 
 
 
@@ -508,7 +508,7 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
 	
 	 if( _shadowmapEnable>0.5){
 	   int renderOffset=(int)(_LightProjectionsRow/2);
-	  float2 offset= floor( (wpos.xz+half2(0,wpos.y*StaticShadowLightDir.z/-StaticShadowLightDir.y))/StaticShadowLightDir.w)+renderOffset;
+	  float2 offset= floor( (wpos.xz+half2(0,(wpos.y-StaticShadowAvgHeight)*StaticShadowLightDir.z/-StaticShadowLightDir.y))/StaticShadowLightDir.w)+renderOffset;
 	// float2 offset= floor( wpos.xz/StaticShadowLightDir.w)+renderOffset;
 	  float2 center= floor(_WorldSpaceCameraPos.xz/StaticShadowLightDir.w)+renderOffset;
  	  offset-= center;

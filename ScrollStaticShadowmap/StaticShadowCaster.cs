@@ -152,7 +152,7 @@ public class StaticShadowCaster : MonoBehaviour
 		}
             if (lightProjecionMatrixs == null || lightProjecionMatrixs.Length != cellCountSqrt * cellCountSqrt)// = new Matrix4x4[10];)
             { lightProjecionMatrixs = new Matrix4x4[cellCountSqrt * cellCountSqrt]; };
-		pos.y = 0;
+		//pos.y = 0;
 		transform.parent.position = pos;
 		
 		currentRenderIndex = index;
