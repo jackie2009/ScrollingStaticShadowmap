@@ -13,7 +13,11 @@ namespace com.jackie2009.scrollStaticShadowmap
         public int cellCountSqrt = 8;
 		private StaticShadowCaster _shadowCaster;
         private GameObject testItem;
-          public float renderStep = 0.1f;
+          public bool showdebugRect = true;
+
+          private HashSet<int> capturedSet;//(z+5000)*10000+x+5000
+
+          private int lastCenterKey;
         // Use this for initialization
         void Start()
         {
@@ -30,6 +34,7 @@ namespace com.jackie2009.scrollStaticShadowmap
 
             testItem.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
             testItem.GetComponent<Renderer>().material.color = Color.red;
+            testItem.GetComponent<Renderer>().enabled = showdebugRect;
             testItem.transform.position = new Vector3(0, 1.4f, 0);
 
 
@@ -41,7 +46,8 @@ namespace com.jackie2009.scrollStaticShadowmap
             Vector4 StaticShadowLightDir = transform.forward;
             StaticShadowLightDir.w = cellSize;
              Shader.SetGlobalVector("StaticShadowLightDir", StaticShadowLightDir);
-              _shadowCaster.enabled = true;
+             // _shadowCaster.enabled = true;
+              capturedSet=new HashSet<int>();
 		}
 
        
@@ -55,6 +61,7 @@ namespace com.jackie2009.scrollStaticShadowmap
 				if (GUI.Button(new Rect(0, 0, 800, 40), "启用静态shadowmap观察drawcall和性能"))
 				{
 			 
+					capturedSet.Clear();
 					_shadowCaster.enabled = true;
 
 				}
@@ -75,20 +82,54 @@ namespace com.jackie2009.scrollStaticShadowmap
         {
 	     
 	        renderShadow(Time.frameCount);
-	        print(   GetComponent<Camera>().aspect );
+	         
         }
 
+        private int getPosSetKey(int x, int z)
+        {
+	        return (z+5000) * 10000 + (x+5000);
+        }
+        private int getDistanceForKey(int key1, int key2)
+        {
+	        return Mathf.Max(Mathf.Abs(key1/10000-key2/10000), Mathf.Abs(key1%10000-key2%10000));
+        }
         // Update is called once per frame
 		void renderShadow(int index)
 		{
             _shadowCaster.cellCountSqrt = cellCountSqrt;
             if (_shadowCaster.enabled == false) return;
+            
+            
             int renderIndex = index % (cellCountSqrt * cellCountSqrt);
             int offsetX = renderIndex % cellCountSqrt-cellCountSqrt/2;
             int offsetZ = renderIndex / cellCountSqrt-cellCountSqrt/2;
             var centerPos = Camera.main.transform.position / cellSize;
             int centerX = (int)Mathf.Floor(centerPos.x);
             int centerZ = (int)Mathf.Floor(centerPos.z);
+           
+            //判断是否需要重拍阴影
+            int centerKey = getPosSetKey(centerX, centerZ);
+            //删除capturedSet中需要重新绘制的
+            if (lastCenterKey != centerKey)
+            {
+	            List<int> delItems=new List<int>();
+	            foreach (var k in capturedSet)
+	            {
+		            if (getDistanceForKey(k, centerKey) > cellCountSqrt / 2)delItems.Add(k); 
+	            }
+
+	            foreach (var item in delItems)
+	            {
+		            capturedSet.Remove(item);
+	            }
+
+	            lastCenterKey = centerKey;
+
+            }
+
+            int newKey = getPosSetKey(centerX + offsetX, centerZ + offsetZ);
+            if (capturedSet.Contains(newKey)) return;
+            capturedSet.Add(newKey);
             
             var pos = testItem.transform.position;
             pos.x = (offsetX + centerX) * cellSize+cellSize /2;
@@ -103,6 +144,7 @@ namespace com.jackie2009.scrollStaticShadowmap
             
             renderIndex = renderIndexZ * cellCountSqrt + renderIndexX;
          _shadowCaster.renderWithIndex(renderIndex,pos);
+         print("renderIndex:"+renderIndex);
 
 
 
