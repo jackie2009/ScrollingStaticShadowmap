@@ -508,7 +508,16 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
 	
 	 if( _shadowmapEnable>0.5){
 	   int renderOffset=(int)(_LightProjectionsRow/2);
-	  float2 offset= floor( (wpos.xz+half2(0,(wpos.y-StaticShadowAvgHeight)*StaticShadowLightDir.z/-StaticShadowLightDir.y))/StaticShadowLightDir.w)+renderOffset;
+	   half3 lpos=wpos;
+	       float R =sqrt( lpos.x * lpos.x + lpos.z * lpos.z);
+            float beta = atan2(lpos.z, lpos.x);
+            float alpha = atan2(StaticShadowLightDir.z,StaticShadowLightDir.x)-3.1415926f/2;
+            lpos.z = sin(beta - alpha) * R;
+            lpos.x = cos(beta - alpha) * R;
+            
+	  float2 offset= floor( (lpos.xz+half2(
+	  0//(wpos.y-StaticShadowAvgHeight)*StaticShadowLightDir.x/-StaticShadowLightDir.y
+	  ,(lpos.y-StaticShadowAvgHeight)*StaticShadowLightDir.z/-StaticShadowLightDir.y))/StaticShadowLightDir.w)+renderOffset;
 	// float2 offset= floor( wpos.xz/StaticShadowLightDir.w)+renderOffset;
 	  float2 center= floor(_WorldSpaceCameraPos.xz/StaticShadowLightDir.w)+renderOffset;
  	  offset-= center;

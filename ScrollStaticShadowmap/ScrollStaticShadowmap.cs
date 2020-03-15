@@ -136,6 +136,13 @@ namespace com.jackie2009.scrollStaticShadowmap
             var pos = testItem.transform.position;
             pos.x = (offsetX + centerX) * cellSize+cellSize /2;
             pos.z = (offsetZ + centerZ) * cellSize + cellSize  / 2;
+
+            float R =Mathf.Sqrt( pos.x * pos.x + pos.z * pos.z);
+            float beta = Mathf.Atan2(pos.z, pos.x);
+            float alpha = -Mathf.Atan2(transform.forward.z,transform.forward.x)+Mathf.PI/2;
+            pos.z = Mathf.Sin(beta - alpha) * R;
+            pos.x = Mathf.Cos(beta - alpha) * R;
+            
             testItem.transform.position = pos;
             
             //计算世界坐标下 固定图集位置 ，不应该完全根据相对相机位置来计算 否则会覆盖其他正在使用的像素 这句含义只有上帝和我清楚
