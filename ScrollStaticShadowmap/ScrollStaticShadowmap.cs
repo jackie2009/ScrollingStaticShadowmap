@@ -38,8 +38,9 @@ namespace com.jackie2009.scrollStaticShadowmap
             float cosLightDir = Vector3.Dot(Vector3.up, -transform.forward);
             GetComponent<Camera>().aspect = 1 /cosLightDir ;
             GetComponent<Camera>().orthographicSize = cellSize / 2 * cosLightDir + (1-cosLightDir)*3+0.2f;//* Mathf.Sqrt(2);
-           
-             Shader.SetGlobalVector("StaticShadowLightDir",transform.forward);
+            Vector4 StaticShadowLightDir = transform.forward;
+            StaticShadowLightDir.w = cellSize;
+             Shader.SetGlobalVector("StaticShadowLightDir", StaticShadowLightDir);
               _shadowCaster.enabled = true;
 		}
 
@@ -53,7 +54,7 @@ namespace com.jackie2009.scrollStaticShadowmap
 			{
 				if (GUI.Button(new Rect(0, 0, 800, 40), "启用静态shadowmap观察drawcall和性能"))
 				{
-					 
+			 
 					_shadowCaster.enabled = true;
 
 				}
