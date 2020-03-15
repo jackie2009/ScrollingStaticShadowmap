@@ -114,7 +114,7 @@ float4 _ShadowMapTexture_TexelSize;
 #define _LightProjectionsRow 7
 #define _LightProjectionsCount (_LightProjectionsRow*_LightProjectionsRow)
   float4x4 _LightProjections[_LightProjectionsCount];
- 
+  float4 StaticShadowLightDir;
 
 
 
@@ -508,9 +508,10 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
 	
 	 if( _shadowmapEnable>0.5){
 	   int renderOffset=(int)(_LightProjectionsRow/2);
-	 float2 offset= floor(wpos.xz/30)+renderOffset;
-	 float2 center= floor(_WorldSpaceCameraPos.xz/30)+renderOffset;
-	  offset-= center;
+	  float2 offset= floor( (wpos.xz+half2(0,wpos.y*StaticShadowLightDir.z))/30)+renderOffset;
+	// float2 offset= floor( wpos.xz/30)+renderOffset;
+	  float2 center= floor(_WorldSpaceCameraPos.xz/30)+renderOffset;
+ 	  offset-= center;
 	   
 	
       // 计算每个点应该采样哪张图 哪个相机projection 可以用投影到与相机垂直到平面来 计算 性能更好 这里先直观的采用离哪个ndc中心更近判断
