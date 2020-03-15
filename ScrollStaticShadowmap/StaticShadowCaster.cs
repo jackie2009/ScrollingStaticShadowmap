@@ -135,7 +135,7 @@ public class StaticShadowCaster : MonoBehaviour
 		Matrix4x4 projection  = GL.GetGPUProjectionMatrix(cmr.projectionMatrix, false);
 		Matrix4x4 lightProjecionMatrix =  projection * worldToView;
 		//Shader.SetGlobalMatrix ("_LightProjection", lightProjecionMatrix);
-  print("currentRenderIndex:"+currentRenderIndex);
+//  print("currentRenderIndex:"+currentRenderIndex);
 		lightProjecionMatrixs[currentRenderIndex] = lightProjecionMatrix;		
  
 		Shader.SetGlobalMatrixArray("_LightProjections", lightProjecionMatrixs);

@@ -13,11 +13,11 @@ namespace com.jackie2009.scrollStaticShadowmap
         public int cellCountSqrt = 8;
 		private StaticShadowCaster _shadowCaster;
         private GameObject testItem;
-
-        public float renderStep = 0.1f;
+         public float renderStep = 0.1f;
         // Use this for initialization
         void Start()
-		{
+        {
+            	        
 			_shadowCaster = GetComponent<StaticShadowCaster>();
 		 
 
@@ -33,9 +33,13 @@ namespace com.jackie2009.scrollStaticShadowmap
             testItem.transform.position = new Vector3(0, 1.4f, 0);
 
 
-            GetComponent<Camera>().orthographicSize = cellSize / 2;//* Mathf.Sqrt(2);
-          //  _shadowCaster.enabled = true;
+
+
+            float cosLightDir = Vector3.Dot(Vector3.up, -transform.forward);
+            GetComponent<Camera>().aspect = 1 /cosLightDir ;
+            GetComponent<Camera>().orthographicSize = cellSize / 2 * cosLightDir + (1-cosLightDir)*3+0.2f;//* Mathf.Sqrt(2);
             //StartCoroutine(loopRender());
+             //_shadowCaster.enabled = true;
 		}
 
        
@@ -77,6 +81,7 @@ namespace com.jackie2009.scrollStaticShadowmap
         private void Update()
         {
 	        renderShadow(Time.frameCount);
+	        print(   GetComponent<Camera>().aspect );
         }
 
         // Update is called once per frame
