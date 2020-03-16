@@ -24,11 +24,11 @@ namespace com.jackie2009.scrollStaticShadowmap
         {
             	        
 			_shadowCaster = GetComponent<StaticShadowCaster>();
-		 
+          
 
-			
-			
-              testItem = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+
+            testItem = GameObject.CreatePrimitive(PrimitiveType.Cube);
               testItem.layer = LayerMask.NameToLayer("Water");
               testItem.GetComponent<Collider>().enabled = false;
             testItem.transform.localScale = new Vector3(cellSize, 0.01f, cellSize);
@@ -95,6 +95,14 @@ namespace com.jackie2009.scrollStaticShadowmap
         {
 	        return Mathf.Max(Mathf.Abs(key1/10000-key2/10000), Mathf.Abs(key1%10000-key2%10000));
         }
+        Vector3 rotateAxis2D(Vector3 pos, float rot) {
+            float R = Mathf.Sqrt(pos.x * pos.x + pos.z * pos.z);
+            float beta = Mathf.Atan2(pos.z, pos.x);
+           // float alpha = -Mathf.Atan2(transform.forward.z, transform.forward.x) + Mathf.PI / 2;
+            pos.z = Mathf.Sin(beta - rot) * R;
+            pos.x = Mathf.Cos(beta - rot) * R;
+            return pos;
+        }
         // Update is called once per frame
 		void renderShadow(int index)
 		{
@@ -105,7 +113,8 @@ namespace com.jackie2009.scrollStaticShadowmap
             int renderIndex = index % (cellCountSqrt * cellCountSqrt);
             int offsetX = renderIndex % cellCountSqrt-cellCountSqrt/2;
             int offsetZ = renderIndex / cellCountSqrt-cellCountSqrt/2;
-            var centerPos = Camera.main.transform.position / cellSize;
+         Vector3  cmrPosRot = rotateAxis2D(Camera.main.transform.position, Mathf.Atan2(transform.forward.z, transform.forward.x) - Mathf.PI / 2);
+            var centerPos = cmrPosRot / cellSize;
             int centerX = (int)Mathf.Floor(centerPos.x);
             int centerZ = (int)Mathf.Floor(centerPos.z);
            
@@ -137,11 +146,7 @@ namespace com.jackie2009.scrollStaticShadowmap
             pos.x = (offsetX + centerX) * cellSize+cellSize /2;
             pos.z = (offsetZ + centerZ) * cellSize + cellSize  / 2;
 
-            float R =Mathf.Sqrt( pos.x * pos.x + pos.z * pos.z);
-            float beta = Mathf.Atan2(pos.z, pos.x);
-            float alpha = -Mathf.Atan2(transform.forward.z,transform.forward.x)+Mathf.PI/2;
-            pos.z = Mathf.Sin(beta - alpha) * R;
-            pos.x = Mathf.Cos(beta - alpha) * R;
+            pos = rotateAxis2D(pos, -Mathf.Atan2(transform.forward.z, transform.forward.x) + Mathf.PI / 2);
             
             testItem.transform.position = pos;
             

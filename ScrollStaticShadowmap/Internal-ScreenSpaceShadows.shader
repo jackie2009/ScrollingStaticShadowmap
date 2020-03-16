@@ -467,7 +467,14 @@ fixed4 frag_hard (v2f i) : SV_Target
 	fixed4 res = shadow;
 	return res;
 }
- 
+half3 rotateAxis2D(half3 pos, half rot) {
+	float R = sqrt(pos.x * pos.x + pos.z * pos.z);
+	float beta = atan2(pos.z, pos.x);
+	 
+	pos.z = sin(beta - rot) * R;
+	pos.x = cos(beta - rot) * R;
+	return pos;
+}
 /**
  *	Soft Shadow (SM 3.0)
  */
@@ -508,18 +515,13 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
 	
 	 if( _shadowmapEnable>0.5){
 	   int renderOffset=(int)(_LightProjectionsRow/2);
-	   half3 lpos=wpos;
-	       float R =sqrt( lpos.x * lpos.x + lpos.z * lpos.z);
-            float beta = atan2(lpos.z, lpos.x);
-            float alpha = atan2(StaticShadowLightDir.z,StaticShadowLightDir.x)-3.1415926f/2;
-            lpos.z = sin(beta - alpha) * R;
-            lpos.x = cos(beta - alpha) * R;
+	   half3 lpos=rotateAxis2D( wpos, atan2(StaticShadowLightDir.z, StaticShadowLightDir.x) - 3.1415926f / 2);
+	
             
-	  float2 offset= floor( (lpos.xz+half2(
-	  0//(wpos.y-StaticShadowAvgHeight)*StaticShadowLightDir.x/-StaticShadowLightDir.y
-	  ,(lpos.y-StaticShadowAvgHeight)*StaticShadowLightDir.z/-StaticShadowLightDir.y))/StaticShadowLightDir.w)+renderOffset;
+	  float2 offset= floor( (lpos.xz)/StaticShadowLightDir.w)+renderOffset;
 	// float2 offset= floor( wpos.xz/StaticShadowLightDir.w)+renderOffset;
-	  float2 center= floor(_WorldSpaceCameraPos.xz/StaticShadowLightDir.w)+renderOffset;
+	  half3 cmrPosByRot= rotateAxis2D(_WorldSpaceCameraPos.xyz,atan2(StaticShadowLightDir.z, StaticShadowLightDir.x) - 3.1415926f / 2);
+	  float2 center= floor(cmrPosByRot.xz/StaticShadowLightDir.w)+renderOffset;
  	  offset-= center;
 	   
 	
@@ -534,7 +536,7 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
             renderIndexZ = (renderIndexZ + (centerZ%_LightProjectionsRow)+_LightProjectionsRow) % _LightProjectionsRow;
             
             renderIndex = renderIndexZ * _LightProjectionsRow + renderIndexX;
-     
+			 renderIndex = 12;
      //half mindis=100000;
     // renderIndex=12;
       if(renderIndex>=0&&renderIndex<_LightProjectionsCount){
