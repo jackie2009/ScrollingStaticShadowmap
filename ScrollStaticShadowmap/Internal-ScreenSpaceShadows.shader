@@ -114,10 +114,9 @@ float4 _ShadowMapTexture_TexelSize;
 #define _LightProjectionsRow 7
 #define _LightProjectionsCount (_LightProjectionsRow*_LightProjectionsRow)
   float4x4 _LightProjections[_LightProjectionsCount];
-  float4 StaticShadowLightDir;
-float StaticShadowAvgHeight;
-
-
+  float2 StaticShadowCellSize;
+ 
+float4x4 StaticShadowlightSpace;
 
 //
 // Keywords based defines
@@ -384,7 +383,7 @@ half sampleShadowmap_PCF5x5_extra (float4 coord, float2 receiverPlaneDepthBias,i
   int rowcount = _LightProjectionsRow;
   coord.xy /= rowcount;
    
-  //	coord.z+=0.05;
+  	//coord.z-=0.05;
   			 coord.x +=   ((index)% rowcount) / (float)rowcount;
   			 coord.y +=   ((index)/ rowcount) / (float)rowcount;
   	 
@@ -467,14 +466,7 @@ fixed4 frag_hard (v2f i) : SV_Target
 	fixed4 res = shadow;
 	return res;
 }
-half3 rotateAxis2D(half3 pos, half rot) {
-	float R = sqrt(pos.x * pos.x + pos.z * pos.z);
-	float beta = atan2(pos.z, pos.x);
-	 
-	pos.z = sin(beta - rot) * R;
-	pos.x = cos(beta - rot) * R;
-	return pos;
-}
+ 
 /**
  *	Soft Shadow (SM 3.0)
  */
@@ -515,13 +507,13 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
 	
 	 if( _shadowmapEnable>0.5){
 	   int renderOffset=(int)(_LightProjectionsRow/2);
-	   half3 lpos=rotateAxis2D( wpos, atan2(StaticShadowLightDir.z, StaticShadowLightDir.x) - 3.1415926f / 2);
+	   half3 lpos= mul(StaticShadowlightSpace, wpos)  ;
 	
             
-	  float2 offset= floor( (lpos.xz)/StaticShadowLightDir.w)+renderOffset;
-	// float2 offset= floor( wpos.xz/StaticShadowLightDir.w)+renderOffset;
-	  half3 cmrPosByRot= rotateAxis2D(_WorldSpaceCameraPos.xyz,atan2(StaticShadowLightDir.z, StaticShadowLightDir.x) - 3.1415926f / 2);
-	  float2 center= floor(cmrPosByRot.xz/StaticShadowLightDir.w)+renderOffset;
+	  float2 offset= floor( (lpos.xy)/StaticShadowCellSize)+renderOffset;
+	 
+	  half3 cmrPosByRot= mul(StaticShadowlightSpace,_WorldSpaceCameraPos.xyz);
+	  float2 center= floor(cmrPosByRot.xy/StaticShadowCellSize)+renderOffset;
  	  offset-= center;
 	   
 	
@@ -536,7 +528,7 @@ fixed4 frag_pcf5x5(v2f i) : SV_Target
             renderIndexZ = (renderIndexZ + (centerZ%_LightProjectionsRow)+_LightProjectionsRow) % _LightProjectionsRow;
             
             renderIndex = renderIndexZ * _LightProjectionsRow + renderIndexX;
-			 renderIndex = 12;
+	 
      //half mindis=100000;
     // renderIndex=12;
       if(renderIndex>=0&&renderIndex<_LightProjectionsCount){

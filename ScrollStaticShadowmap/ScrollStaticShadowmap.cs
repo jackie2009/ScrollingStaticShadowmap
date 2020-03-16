@@ -19,6 +19,12 @@ namespace com.jackie2009.scrollStaticShadowmap
           private HashSet<int> capturedSet;//(z+5000)*10000+x+5000
 
           private int lastCenterKey;
+
+          public Matrix4x4 lightSpace;
+          public Matrix4x4 lightSpaceInverse;
+
+ 
+          private Vector2 cellsizeInLightSpace;
         // Use this for initialization
         void Start()
         {
@@ -44,13 +50,22 @@ namespace com.jackie2009.scrollStaticShadowmap
             float cosLightDir = Vector3.Dot(Vector3.up, -transform.forward);
             GetComponent<Camera>().aspect = 1 /cosLightDir ;
             GetComponent<Camera>().orthographicSize = cellSize / 2 * cosLightDir + (1-cosLightDir)*3+0.2f;//* Mathf.Sqrt(2);
-            Vector4 StaticShadowLightDir = transform.forward;
-            StaticShadowLightDir.w = cellSize;
-             Shader.SetGlobalVector("StaticShadowLightDir", StaticShadowLightDir);
-             Shader.SetGlobalFloat("StaticShadowAvgHeight", avgHeight);
+      
              // _shadowCaster.enabled = true;
               capturedSet=new HashSet<int>();
-		}
+
+              lightSpace = transform.worldToLocalMatrix;
+              lightSpace.m03 = lightSpace.m13 = lightSpace.m23 = 0;
+           
+
+              lightSpaceInverse = transform.localToWorldMatrix;
+              lightSpaceInverse.m03 = lightSpaceInverse.m13 = lightSpaceInverse.m23 = 0;
+              Shader.SetGlobalMatrix("StaticShadowlightSpace", lightSpace);
+               
+              cellsizeInLightSpace=new Vector2(cellSize, cellSize * Mathf.Abs(transform.forward.y));
+              Shader.SetGlobalVector("StaticShadowCellSize", cellsizeInLightSpace);
+
+        }
 
        
 
@@ -82,7 +97,7 @@ namespace com.jackie2009.scrollStaticShadowmap
 
         private void Update()
         {
-	     
+ 
 	        renderShadow(Time.frameCount);
 	         
         }
@@ -95,14 +110,7 @@ namespace com.jackie2009.scrollStaticShadowmap
         {
 	        return Mathf.Max(Mathf.Abs(key1/10000-key2/10000), Mathf.Abs(key1%10000-key2%10000));
         }
-        Vector3 rotateAxis2D(Vector3 pos, float rot) {
-            float R = Mathf.Sqrt(pos.x * pos.x + pos.z * pos.z);
-            float beta = Mathf.Atan2(pos.z, pos.x);
-           // float alpha = -Mathf.Atan2(transform.forward.z, transform.forward.x) + Mathf.PI / 2;
-            pos.z = Mathf.Sin(beta - rot) * R;
-            pos.x = Mathf.Cos(beta - rot) * R;
-            return pos;
-        }
+       
         // Update is called once per frame
 		void renderShadow(int index)
 		{
@@ -112,14 +120,14 @@ namespace com.jackie2009.scrollStaticShadowmap
             
             int renderIndex = index % (cellCountSqrt * cellCountSqrt);
             int offsetX = renderIndex % cellCountSqrt-cellCountSqrt/2;
-            int offsetZ = renderIndex / cellCountSqrt-cellCountSqrt/2;
-         Vector3  cmrPosRot = rotateAxis2D(Camera.main.transform.position, Mathf.Atan2(transform.forward.z, transform.forward.x) - Mathf.PI / 2);
-            var centerPos = cmrPosRot / cellSize;
+            int offsetY = renderIndex / cellCountSqrt-cellCountSqrt/2;
+            Vector3 cmrPosRot = lightSpace.MultiplyPoint3x4(Camera.main.transform.position);
+            var centerPos = new Vector2(cmrPosRot.x / cellsizeInLightSpace.x,cmrPosRot.y / cellsizeInLightSpace.y);
             int centerX = (int)Mathf.Floor(centerPos.x);
-            int centerZ = (int)Mathf.Floor(centerPos.z);
+            int centerY = (int)Mathf.Floor(centerPos.y);
            
             //判断是否需要重拍阴影
-            int centerKey = getPosSetKey(centerX, centerZ);
+            int centerKey = getPosSetKey(centerX, centerY);
             //删除capturedSet中需要重新绘制的
             if (lastCenterKey != centerKey)
             {
@@ -138,25 +146,31 @@ namespace com.jackie2009.scrollStaticShadowmap
 
             }
 
-            int newKey = getPosSetKey(centerX + offsetX, centerZ + offsetZ);
-            if (capturedSet.Contains(newKey)) return;
+            int newKey = getPosSetKey(centerX + offsetX, centerY + offsetY);
+           if (capturedSet.Contains(newKey)) return;
             capturedSet.Add(newKey);
             
-            var pos = testItem.transform.position;
-            pos.x = (offsetX + centerX) * cellSize+cellSize /2;
-            pos.z = (offsetZ + centerZ) * cellSize + cellSize  / 2;
-
-            pos = rotateAxis2D(pos, -Mathf.Atan2(transform.forward.z, transform.forward.x) + Mathf.PI / 2);
+            var pos =Vector3.zero;
             
+            pos.x = (offsetX + centerX) * cellsizeInLightSpace.x+cellsizeInLightSpace.x /2;
+            pos.y = (offsetY + centerY) * cellsizeInLightSpace.y + cellsizeInLightSpace.y  / 2;
+
+            Vector3 wpos = lightSpaceInverse.MultiplyPoint3x4(pos);
+               float cmrAdjust= (wpos.y - avgHeight)/transform.forward.y;
+               pos.z -= cmrAdjust;
+               pos= lightSpaceInverse.MultiplyPoint3x4(pos);
+            
+            
+
             testItem.transform.position = pos;
             
             //计算世界坐标下 固定图集位置 ，不应该完全根据相对相机位置来计算 否则会覆盖其他正在使用的像素 这句含义只有上帝和我清楚
             int renderIndexX = renderIndex % cellCountSqrt;
-            int renderIndexZ = renderIndex / cellCountSqrt;
+            int renderIndexY = renderIndex / cellCountSqrt;
             renderIndexX = (renderIndexX + centerX%cellCountSqrt+cellCountSqrt) % cellCountSqrt;
-            renderIndexZ = (renderIndexZ + centerZ%cellCountSqrt+cellCountSqrt) % cellCountSqrt;
+            renderIndexY = (renderIndexY + centerY%cellCountSqrt+cellCountSqrt) % cellCountSqrt;
             
-            renderIndex = renderIndexZ * cellCountSqrt + renderIndexX;
+            renderIndex = renderIndexY * cellCountSqrt + renderIndexX;
          _shadowCaster.renderWithIndex(renderIndex,pos);
          print("renderIndex:"+renderIndex);
 
